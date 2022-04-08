@@ -36,14 +36,14 @@ class LaserSensor:
         self.angles = np.linspace(0, 2 * np.pi, nAngles, False)
         anglesXY = np.append(np.expand_dims(np.cos(self.angles), 1), np.expand_dims(np.sin(self.angles), 1), 1)
         self.pixels = np.array(np.round(np.expand_dims(np.expand_dims(radius, 1), 0) * np.expand_dims(anglesXY, 1)),
-                          dtype=int)
+                               dtype=int)
         self.all_pixel_distances = np.linalg.norm(self.pixels, axis=2)
 
-    def distance(self, obstaclePosition):
-        return np.linalg.norm(np.array(obstaclePosition) - np.array(self.position))
-        # px = (obstaclePosition[0] - self.position[0]) ** 2
-        # py = (obstaclePosition[1] - self.position[1]) ** 2
-        # return np.sqrt(px + py)
+    # def distance(self, obstaclePosition):
+    #     return np.linalg.norm(np.array(obstaclePosition) - np.array(self.position))
+    #     # px = (obstaclePosition[0] - self.position[0]) ** 2
+    #     # py = (obstaclePosition[1] - self.position[1]) ** 2
+    #     # return np.sqrt(px + py)
 
     def sense_obstacles(self):
         data = []
@@ -53,6 +53,7 @@ class LaserSensor:
 
         angles = self.angles[distances <= self.Range]
         distances = distances[distances <= self.Range]
+        # TODO: store data in one numpy array (only distances and angles, plus position in first entry, or separately)
         for i in range(0, len(angles)):
             data.append([distances[i], angles[i], self.position])
 
