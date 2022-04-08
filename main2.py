@@ -15,7 +15,7 @@ if __name__ == '__main__':
     FeatureMAP = features.featuresDetection()
     environment = env.buildEnvironment((600, 1200), 'map1.png')
     originalMap = environment.map.copy()
-    laser = sensors.LaserSensor(200, originalMap, uncertanty=(0.5, 0.01))
+    laser = sensors.LaserSensor(200, 200, originalMap, uncertanty=(0.5, 0.01))
     # environment.map.fill((255, 255, 255))
     environment.infomap = environment.map.copy()
     originalMap = environment.map.copy()

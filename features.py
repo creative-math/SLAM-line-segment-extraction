@@ -99,7 +99,7 @@ class featuresDetection:
                 coordinates = self.AD2pos(point[0], point[1], point[2])  # convert distance, angle and position to pixel
                 self.LASERPOINTS.append([coordinates, point[1]])
         self.NP = len(self.LASERPOINTS) - 1
-        print(self.LASERPOINTS)
+        # print(self.LASERPOINTS)
 
     # Define a function (quadratic in our case) to fit the data with.
     def linear_func(self, p, x):
