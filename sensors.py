@@ -1,5 +1,4 @@
 import pygame
-import math
 import numpy as np
 
 
@@ -47,8 +46,8 @@ class LaserSensor:
 
     def sense_obstacles(self):
         data = []
-        mask = self.solid[tuple(np.clip(np.array(self.pixels + (self.position + np.ones(2, dtype=int)), dtype=int),
-                                        np.zeros(2, dtype=int), np.array([self.W + 1, self.H + 1], dtype=int)).T)].T
+        mask = self.solid[tuple(np.clip(self.pixels + (self.position + np.ones(2, dtype=int)),
+                                        np.zeros(2, dtype=int), np.array([self.W + 1, self.H + 1])).T)].T
         distances = np.min(np.where(mask, self.all_pixel_distances, self.Range + 1), 1)
 
         angles = self.angles[distances <= self.Range]
