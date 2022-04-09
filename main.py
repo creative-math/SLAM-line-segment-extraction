@@ -10,14 +10,12 @@ environment.originalMap = environment.map.copy()
 laser = sensors.LaserSensor(200, 200, environment.originalMap, uncertanty=(0.5, 0.01))
 environment.map.fill((0, 0, 0))
 environment.infomap = environment.map.copy()
-# originalMap = environment.map.copy()  # added to provide the circle
 
 running = True
 num_events = 0
 sum_time = 0
 
 while running:
-    # environment.infomap = originalMap.copy()  # added to provide the circle
     sensorON = False
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -36,12 +34,14 @@ while running:
         laser.position = np.array(position)
         sensor_data = laser.sense_obstacles()  # 1D-array of max len 60, that contains for every angle the distance to the first black pixel and the original position
         print("\rNumber of stored points: %s" % len(environment.pointCloud), end='')
-        environment.dataStorage(sensor_data)
-        environment.show_sensorData()
-        # pygame.draw.circle(environment.infomap, (255, 0, 0), laser.position, laser.Range, 2)  # draw the scan radius
+        points = environment.dataStorage(sensor_data)
+        environment.show_sensorData(points)
         sum_time += time.time() - start_time
         num_events += 1
+    foreground = pygame.Surface((environment.mapw, environment.maph))
+    pygame.draw.circle(foreground, (255, 0, 0), laser.position, laser.Range, 2)  # draw the scan radius
     environment.map.blit(environment.infomap, (0, 0))
+    environment.map.blit(foreground, (0, 0), special_flags=pygame.BLEND_ADD)
     pygame.display.update()
 
 # pygame.quit()  # bug fix von Louis
