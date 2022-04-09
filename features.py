@@ -3,9 +3,6 @@ import math
 from fractions import Fraction
 from scipy.odr import *
 
-# landmarks
-Landmarks = []
-
 
 class featuresDetection:
     def __init__(self):
@@ -25,20 +22,17 @@ class featuresDetection:
         self.PR = 0  # the number of laser points contained in the line segment
 
     # euclidian distance from point1 to point2
-    @staticmethod
-    def dist_point2point(point1, point2):
+    def dist_point2point(self, point1, point2):
         return np.linalg.norm(np.array(point1) - np.array(point2))
 
     # distance point to line written in the general form
-    @staticmethod
-    def dist_point2line(params, point):
+    def dist_point2line(self, params, point):
         A, B, C = params
         distance = abs(A * point[0] + B * point[1] + C) / np.sqrt(A ** 2 + B ** 2)
         return distance
 
     # ectract two points from a line equation under the slope intercepts from
-    @staticmethod
-    def line_2points(m, b):
+    def line_2points(self, m, b):
         x = 5
         y = m * x + b
         x2 = 2000
@@ -46,15 +40,13 @@ class featuresDetection:
         return [(x, y), (x2, y2)]
 
     # general form to slope-intercept
-    @staticmethod
-    def lineForm_G2SI(A, B, C):
+    def lineForm_G2SI(self, A, B, C):
         m = -A / B
         B = -C / B
         return m, B
 
     # slope-intercept to general form
-    @staticmethod
-    def lineForm_Si2G(m, B):
+    def lineForm_Si2G(self, m, B):
         A, B, C = -m, 1, -B
         if A < 0:
             A, B, C = -A, -B, -C
@@ -69,16 +61,14 @@ class featuresDetection:
         C = C * lcm
         return A, B, C
 
-    @staticmethod
-    def line_intersect_general(params1, params2):
+    def line_intersect_general(self, params1, params2):
         a1, b1, c1 = params1
         a2, b2, c2 = params2
         x = (c1 * b2 - b1 * c2) / (b1 * a2 - a1 * b2)
         y = (a1 * c2 - a2 * c1) / (b1 * a2 - a1 * b2)
         return x, y
 
-    @staticmethod
-    def points_2line(point1, point2):
+    def points_2line(self, point1, point2):
         m, b = 0, 0
         if point2[0] == point1[0]:
             pass
@@ -87,8 +77,7 @@ class featuresDetection:
             b = point2[1] - m * point2[0]
         return m, b
 
-    @staticmethod
-    def projection_point2line(point, m, b):
+    def projection_point2line(self, point, m, b):
         x, y = point
         m2 = -1 / m
         c2 = y - m2 * x
@@ -96,8 +85,7 @@ class featuresDetection:
         intersection_y = m2 * intersection_x + c2
         return intersection_x, intersection_y
 
-    @staticmethod
-    def AD2pos(distance, angle, robot_position):
+    def AD2pos(self, distance, angle, robot_position):
         x = distance * np.cos(angle) + robot_position[0]
         y = distance * np.sin(angle) + robot_position[1]  # perhaps without minus?
         return (int(x), int(y))
@@ -114,8 +102,7 @@ class featuresDetection:
         # print(self.LASERPOINTS)
 
     # Define a function (quadratic in our case) to fit the data with.
-    @staticmethod
-    def linear_func(p, x):
+    def linear_func(self, p, x):
         m, b = p
         return m * x + b
 
@@ -222,44 +209,3 @@ class featuresDetection:
                     (self.LASERPOINTS[PB + 1][0], self.LASERPOINTS[PF - 1][0]), PF, line_eq, (m, b)]
         else:
             return False
-
-    def lineFeats2point(self):
-        new_rep = []  # the new representation of tne features
-
-        for feature in self.FEATURES:
-            projection = self.projection_point2line((0, 0), feature[0][0], feature[0][1])
-            new_rep.append([feature[0], feature[1], projection])
-
-        return new_rep
-
-
-def landmark_association(landmarks):
-    thresh = 10
-    for l in landmarks:
-
-        flag = False
-        for i, Landmark in enumerate(Landmarks):
-            dist = featuresDetection.dist_point2point(l[2], Landmark[2])
-            if dist < thresh:
-                if not is_overlap(l[1], Landmark[1]):
-                    continue
-                else:
-                    Landmarks.pop(i)
-                    Landmarks.insert(i, l)
-                    flag = True
-
-                    break
-        if not flag:
-            Landmarks.append(l)
-
-
-def is_overlap(seg1, seg2):
-    length1 = featuresDetection.dist_point2point(seg1[0], seg1[1])
-    length2 = featuresDetection.dist_point2point(seg2[0], seg2[1])
-    center1 = ((seg1[0][0] + seg1[1][0]) / 2, (seg1[0][1] + seg1[1][1]) / 2)
-    center2 = ((seg2[0][0] + seg2[1][0]) / 2, (seg2[0][1] + seg2[1][1]) / 2)
-    dist = featuresDetection.dist_point2point(center1, center2)
-    if dist > (length1 + length2) / 2:
-        return False
-    else:
-        return True
