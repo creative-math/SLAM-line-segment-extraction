@@ -22,17 +22,20 @@ class featuresDetection:
         self.PR = 0  # the number of laser points contained in the line segment
 
     # euclidian distance from point1 to point2
-    def dist_point2point(self, point1, point2):
+    @staticmethod
+    def dist_point2point(point1, point2):
         return np.linalg.norm(np.array(point1) - np.array(point2))
 
     # distance point to line written in the general form
-    def dist_point2line(self, params, point):
+    @staticmethod
+    def dist_point2line(params, point):
         A, B, C = params
         distance = abs(A * point[0] + B * point[1] + C) / np.sqrt(A ** 2 + B ** 2)
         return distance
 
     # ectract two points from a line equation under the slope intercepts from
-    def line_2points(self, m, b):
+    @staticmethod
+    def line_2points(m, b):
         x = 5
         y = m * x + b
         x2 = 2000
@@ -40,13 +43,15 @@ class featuresDetection:
         return [(x, y), (x2, y2)]
 
     # general form to slope-intercept
-    def lineForm_G2SI(self, A, B, C):
+    @staticmethod
+    def lineForm_G2SI(A, B, C):
         m = -A / B
         B = -C / B
         return m, B
 
     # slope-intercept to general form
-    def lineForm_Si2G(self, m, B):
+    @staticmethod
+    def lineForm_Si2G(m, B):
         A, B, C = -m, 1, -B
         if A < 0:
             A, B, C = -A, -B, -C
@@ -61,14 +66,16 @@ class featuresDetection:
         C = C * lcm
         return A, B, C
 
-    def line_intersect_general(self, params1, params2):
+    @staticmethod
+    def line_intersect_general(params1, params2):
         a1, b1, c1 = params1
         a2, b2, c2 = params2
         x = (c1 * b2 - b1 * c2) / (b1 * a2 - a1 * b2)
         y = (a1 * c2 - a2 * c1) / (b1 * a2 - a1 * b2)
         return x, y
 
-    def points_2line(self, point1, point2):
+    @staticmethod
+    def points_2line(point1, point2):
         m, b = 0, 0
         if point2[0] == point1[0]:
             pass
@@ -77,7 +84,8 @@ class featuresDetection:
             b = point2[1] - m * point2[0]
         return m, b
 
-    def projection_point2line(self, point, m, b):
+    @staticmethod
+    def projection_point2line(point, m, b):
         x, y = point
         if m != 0:
             m2 = -1 / m
@@ -88,7 +96,8 @@ class featuresDetection:
             return x, b
         return intersection_x, intersection_y
 
-    def AD2pos(self, distance, angle, robot_position):
+    @staticmethod
+    def AD2pos(distance, angle, robot_position):
         x = distance * np.cos(angle) + robot_position[0]
         y = distance * np.sin(angle) + robot_position[1]  # perhaps without minus?
         return (int(x), int(y))
@@ -105,7 +114,8 @@ class featuresDetection:
         # print(self.LASERPOINTS)
 
     # Define a function (quadratic in our case) to fit the data with.
-    def linear_func(self, p, x):
+    @staticmethod
+    def linear_func(p, x):
         m, b = p
         return m * x + b
 
