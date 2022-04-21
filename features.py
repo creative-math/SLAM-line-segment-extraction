@@ -11,12 +11,12 @@ class featuresDetection:
         self.EPSILON = 10
         self.DELTA = 501
         self.SNUM = 6
-        self.PMIN = 20
+        self.PMIN = 20  # index of the scanned point, that is currently active
         self.GMAX = 20
         self.SEED_SEGMENTS = []
         self.LINE_SEGMENTS = []
         self.LINE_PARAMS = None
-        self.NP = len(self.LASERPOINTS) - 1
+        self.NP = len(self.LASERPOINTS) - 1  # number of scanned points
         self.LMIN = 20  # minimum length of a line segment (originally 20)
         self.LR = 0  # real length of a line segment
         self.PR = 0  # the number of laser points contained in the line segment
@@ -79,10 +79,13 @@ class featuresDetection:
 
     def projection_point2line(self, point, m, b):
         x, y = point
-        m2 = -1 / m
-        c2 = y - m2 * x
-        intersection_x = - (b - c2) / (m - m2)
-        intersection_y = m2 * intersection_x + c2
+        if m != 0:
+            m2 = -1 / m
+            c2 = y - m2 * x
+            intersection_x = - (b - c2) / (m - m2)
+            intersection_y = m2 * intersection_x + c2
+        else:
+            return x, b
         return intersection_x, intersection_y
 
     def AD2pos(self, distance, angle, robot_position):
@@ -106,9 +109,16 @@ class featuresDetection:
         m, b = p
         return m * x + b
 
+    @staticmethod
+    def linear_func2(p, x):
+        a, b, c = p
+        return (-a / b) * x - (c / b)
+
     def odr_fit(self, laser_points):
         x = np.array([i[0][0] for i in laser_points])
         y = np.array([i[0][1] for i in laser_points])  # bug fix i[0][1] instead of i[0][0]
+
+        # return 0, x[0]
 
         # Create a model for fitting
         linear_model = Model(self.linear_func)
@@ -118,11 +128,18 @@ class featuresDetection:
 
         # Set up ODR with the model and data.
         odr_model = ODR(data, linear_model, beta0=[0., 0.])
+        # odr_model = ODR(data, linear_model, beta0=[0., 1., 0.])
 
         # Run the regression.
         out = odr_model.run()
+
         m, b = out.beta
         return m, b
+        #
+        # a, b, c = out.beta
+        # if b == 0:
+        #     b = 1
+        # return (-a / b), -(c / b)
 
     def predictPoint(self, line_params, sensed_point, robotpos):
         m, b = self.points_2line(robotpos, sensed_point)
@@ -170,11 +187,13 @@ class featuresDetection:
         while self.dist_point2line(line_eq, self.LASERPOINTS[PF][0]) < self.EPSILON:
             if PF > self.NP - 1:
                 break
-            else:
+            elif PB <= PF:
                 m, b = self.odr_fit(self.LASERPOINTS[PB:PF])
                 line_eq = self.lineForm_Si2G(m, b)
 
                 POINT = self.LASERPOINTS[PF][0]
+            else:
+                break
 
             PF = PF + 1
             NEXTPOINT = self.LASERPOINTS[PF][0]
@@ -186,10 +205,12 @@ class featuresDetection:
         while self.dist_point2line(line_eq, self.LASERPOINTS[PB][0]) < self.EPSILON:  # bug fix von Adi Mmx aus YTB
             if PB < break_point:
                 break
-            else:
+            elif PF <= PB:
                 m, b = self.odr_fit(self.LASERPOINTS[PF:PB])
                 line_eq = self.lineForm_Si2G(m, b)
                 POINT = self.LASERPOINTS[PB][0]
+            else:
+                break
 
             PB = PB - 1
             NEXTPOINT = self.LASERPOINTS[PB][0]
