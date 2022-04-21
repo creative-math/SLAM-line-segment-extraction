@@ -3,6 +3,9 @@ import math
 from fractions import Fraction
 from scipy.odr import *
 
+# landmarks
+Landmarks = []
+
 
 class featuresDetection:
     def __init__(self):
@@ -20,6 +23,7 @@ class featuresDetection:
         self.LMIN = 20  # minimum length of a line segment (originally 20)
         self.LR = 0  # real length of a line segment
         self.PR = 0  # the number of laser points contained in the line segment
+        self.FEATURES = []
 
     # euclidian distance from point1 to point2
     @staticmethod
@@ -240,3 +244,44 @@ class featuresDetection:
                     (self.LASERPOINTS[PB + 1][0], self.LASERPOINTS[PF - 1][0]), PF, line_eq, (m, b)]
         else:
             return False
+
+    def lineFeats2point(self):
+        new_rep = []  # the new representation of tne features
+
+        for feature in self.FEATURES:
+            projection = self.projection_point2line((0, 0), feature[0][0], feature[0][1])
+            new_rep.append([feature[0], feature[1], projection])
+
+        return new_rep
+
+
+def landmark_association(landmarks):
+    thresh = 10
+    for l in landmarks:
+
+        flag = False
+        for i, Landmark in enumerate(Landmarks):
+            dist = featuresDetection.dist_point2point(l[2], Landmark[2])
+            if dist < thresh:
+                if not is_overlap(l[1], Landmark[1]):
+                    continue
+                else:
+                    Landmarks.pop(i)
+                    Landmarks.insert(i, l)
+                    flag = True
+
+                    break
+        if not flag:
+            Landmarks.append(l)
+
+
+def is_overlap(seg1, seg2):
+    length1 = featuresDetection.dist_point2point(seg1[0], seg1[1])
+    length2 = featuresDetection.dist_point2point(seg2[0], seg2[1])
+    center1 = ((seg1[0][0] + seg1[1][0]) / 2, (seg1[0][1] + seg1[1][1]) / 2)
+    center2 = ((seg2[0][0] + seg2[1][0]) / 2, (seg2[0][1] + seg2[1][1]) / 2)
+    dist = featuresDetection.dist_point2point(center1, center2)
+    if dist > (length1 + length2) / 2:
+        return False
+    else:
+        return True
