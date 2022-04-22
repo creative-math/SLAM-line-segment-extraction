@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from fractions import Fraction
 from scipy.odr import *
 
@@ -74,6 +73,7 @@ class featuresDetection:
     def line_intersect_general(params1, params2):
         a1, b1, c1 = params1
         a2, b2, c2 = params2
+        # TODO: prevent division by zero
         x = (c1 * b2 - b1 * c2) / (b1 * a2 - a1 * b2)
         y = (a1 * c2 - a2 * c1) / (b1 * a2 - a1 * b2)
         return x, y
@@ -101,21 +101,19 @@ class featuresDetection:
         return intersection_x, intersection_y
 
     @staticmethod
-    def AD2pos(distance, angle, robot_position):
-        x = distance * np.cos(angle) + robot_position[0]
-        y = distance * np.sin(angle) + robot_position[1]  # perhaps without minus?
-        return (int(x), int(y))
+    def AD2pos(distances, angles, robotPosition):
+        return robotPosition + np.expand_dims(distances, 1) * np.append(np.expand_dims(np.cos(angles), 1),
+                                                                        np.expand_dims(np.sin(angles), 1), axis=1)
 
     def laser_points_set(self, data):
         self.LASERPOINTS = []
         if not data:
             pass
-        else:
-            for point in data:
-                coordinates = self.AD2pos(point[0], point[1], point[2])  # convert distance, angle and position to pixel
-                self.LASERPOINTS.append([coordinates, point[1]])
+        else:  # convert distance, angle and position to pixel
+            points = np.array(self.AD2pos(data[0], data[1], data[2]), dtype=int)
+            for i in range(0, data[1].size):
+                self.LASERPOINTS.append([tuple(points[i]), data[1][i]])
         self.NP = len(self.LASERPOINTS) - 1
-        # print(self.LASERPOINTS)
 
     # Define a function (quadratic in our case) to fit the data with.
     @staticmethod
