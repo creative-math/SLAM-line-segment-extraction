@@ -6,6 +6,7 @@ import sensors
 import features
 
 detect_lines = True  # set False to show only the sensed laser points
+detect_landmarks = True  # set False to stop data association
 
 
 def random_color():
@@ -98,12 +99,26 @@ if __name__ == '__main__':
                         print(OUTERMOST, m, c, sep=", ")  # TODO: m = 0 quite often, why are vertical walls shown?
                         print(ENDPOINTS)
 
-                        COLOR = random_color()
-                        for point in line_seg:
-                            environment.infomap.set_at((int(point[0][0]), int(point[0][1])), (0, 255, 0))
-                            # pygame.draw.circle(environment.infomap, COLOR, (int(point[0][0]), int(point[0][1])), 2, 0)
-                        pygame.draw.line(environment.infomap, (255, 0, 0), ENDPOINTS[0], ENDPOINTS[1], 2)
+                        if detect_landmarks:
+                            FeatureMAP.FEATURES.append([[m, c], ENDPOINTS])
+                            pygame.draw.line(environment.infomap, (0, 255, 0), ENDPOINTS[0], ENDPOINTS[1], 1)
+                            environment.dataStorage(sensor_data)
 
-                        environment.dataStorage(sensor_data)
+                            FeatureMAP.FEATURES = FeatureMAP.lineFeats2point()
+                            features.landmark_association(FeatureMAP.FEATURES)
+
+                        else:
+                            COLOR = random_color()
+                            for point in line_seg:
+                                environment.infomap.set_at((int(point[0][0]), int(point[0][1])), (0, 255, 0))
+                                pygame.draw.circle(environment.infomap, COLOR, (int(point[0][0]), int(point[0][1])), 2,
+                                                   0)
+                            pygame.draw.line(environment.infomap, (255, 0, 0), ENDPOINTS[0], ENDPOINTS[1], 2)
+
+                            environment.dataStorage(sensor_data)
+        if detect_landmarks:
+            for landmark in features.Landmarks:
+                pygame.draw.line(environment.infomap, (0, 0, 255), landmark[1][0], landmark[1][1], 2)
+
         environment.map.blit(environment.infomap, (0, 0))
         pygame.display.update()
