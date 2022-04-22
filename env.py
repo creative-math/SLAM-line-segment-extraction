@@ -20,23 +20,19 @@ class buildEnvironment:
         self.white = (255, 255, 255)
         self.infomap = self.map.copy()
 
-    # TODO: vectorize AD2pos
-    def AD2pos(self, distance, angle, robotPosition):
-        x = distance * np.cos(angle) + robotPosition[0]
-        y = distance * np.sin(angle) + robotPosition[1]  # bug fix: minus before distance
-        return (int(x), int(y))
+    @staticmethod
+    def AD2pos(distances, angles, robotPosition):
+        # bug fix: no minus before distance on the y coordinate
+        return robotPosition + np.expand_dims(distances, 1) * np.append(np.expand_dims(np.cos(angles), 1),
+                                                                        np.expand_dims(np.sin(angles), 1), axis=1)
 
     def dataStorage(self, data):
         points = []
-        if data:  # bug fix from Louis Diedericks (YTB Comments)
-            for element in data:  # convert angle, distance and position to pixel
-                point = np.array(self.AD2pos(element[0], element[1], element[2]), dtype=int)
-                points.append(point)
-            self.pointCloud = np.unique(np.append(self.pointCloud, np.array(points), axis=0), axis=0)
-            # if point not in self.pointCloud:
-            #     self.pointCloud.append(point)
+        if data:  # convert angle, distance and position to pixel
+            points = np.array(self.AD2pos(data[0], data[1], data[2]), dtype=int)
+            self.pointCloud = np.unique(np.append(self.pointCloud, points, axis=0), axis=0)
         return points
 
     def show_sensorData(self, data):
         for point in data:  # is it possible to input an array into set_at(...)?
-            self.infomap.set_at((int(point[0]), int(point[1])), (255, 0, 0))
+            self.infomap.set_at(point, (255, 0, 0))
