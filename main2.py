@@ -1,12 +1,13 @@
 import pygame
 import random
+import time
 
 import env
 import sensors
 import features
 
 detect_lines = True  # set False to show only the sensed laser points
-detect_landmarks = True  # set False to stop data association
+detect_landmarks = False  # set False to stop data association
 
 
 def random_color():
@@ -27,6 +28,9 @@ if __name__ == '__main__':
     FEATURE_DETECTION = True
     BREAK_POINT_IND = 0
 
+    num_events = 0
+    sum_time = 0
+
     while running:
         FEATURE_DETECTION = True
         BREAK_POINT_IND = 0
@@ -36,6 +40,8 @@ if __name__ == '__main__':
         # check that the game is still running with the mouse on the environment
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                print("\nNumber of Events: %s - total time: %s sec - time per event: %s sec" %
+                      (num_events, round(sum_time, 3), round(sum_time / num_events, 3)))
                 print("")
                 running = False
             if pygame.mouse.get_focused():
@@ -67,6 +73,8 @@ if __name__ == '__main__':
                 pygame.display.update()
                 continue
 
+            start_time = time.time()
+
             # while there are more unworked points left than a segment needs to have at least
             while BREAK_POINT_IND < (FeatureMAP.NP - FeatureMAP.PMIN) and detect_lines:
 
@@ -96,8 +104,8 @@ if __name__ == '__main__':
                         # calculate the start and end pixel of the scanned line, so it can be drawn on the infomap
                         ENDPOINTS[0] = FeatureMAP.projection_point2line(OUTERMOST[0], m, c)
                         ENDPOINTS[1] = FeatureMAP.projection_point2line(OUTERMOST[1], m, c)
-                        print(OUTERMOST, m, c, sep=", ")  # TODO: m = 0 quite often, why are vertical walls shown?
-                        print(ENDPOINTS)
+                        # print(OUTERMOST, m, c, sep=", ")  # TODO: m = 0 quite often, why are vertical walls shown?
+                        # print(ENDPOINTS)
 
                         if detect_landmarks:
                             FeatureMAP.FEATURES.append([[m, c], ENDPOINTS])
@@ -116,6 +124,9 @@ if __name__ == '__main__':
                             pygame.draw.line(environment.infomap, (255, 0, 0), ENDPOINTS[0], ENDPOINTS[1], 2)
 
                             environment.dataStorage(sensor_data)
+            if detect_lines:
+                sum_time += time.time() - start_time
+            num_events += 1
         if detect_landmarks:
             for landmark in features.Landmarks:
                 pygame.draw.line(environment.infomap, (0, 0, 255), landmark[1][0], landmark[1][1], 2)
