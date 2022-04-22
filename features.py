@@ -7,7 +7,7 @@ Landmarks = []
 
 class featuresDetection:
     def __init__(self):
-        self.LASERPOINTS = []  # bug fix AttributeError: 'featuresDetection' object has no attribute 'LASERPOINTS'
+        self.LASERPOINTS = []
         # variables
         self.EPSILON = 10
         self.DELTA = 501
@@ -75,7 +75,7 @@ class featuresDetection:
         else:  # convert distance, angle and position to pixel
             points = np.array(self.AD2pos(data[0], data[1], data[2]), dtype=int)
             for i in range(0, data[1].size):
-                self.LASERPOINTS.append([tuple(points[i]), data[1][i]])
+                self.LASERPOINTS.append([points[i], data[1][i]])
         self.NP = len(self.LASERPOINTS) - 1
 
     @staticmethod
@@ -84,14 +84,8 @@ class featuresDetection:
         v_rot = np.array([a, b])  # 90° rotated directional vector of the line
         ba = np.array(sensed_point) - robotpos  # directional vector of the laser scan
 
-        return tuple(robotpos + ba * (-c - np.dot(robotpos, v_rot)) / np.dot(ba, v_rot)) \
-            if np.dot(ba, v_rot) != 0 else tuple(np.ones(2) * np.inf)  # two parallel lines intersect in infinity
-
-    # Define a function (quadratic in our case) to fit the data with.
-    @staticmethod
-    def linear_func(p, x):
-        m, b = p
-        return m * x + b
+        return robotpos + ba * (-c - np.dot(robotpos, v_rot)) / np.dot(ba, v_rot) \
+            if np.dot(ba, v_rot) != 0 else np.full(2, np.inf)  # two parallel lines intersect in infinity
 
     @staticmethod
     def linear_func2(p, x):

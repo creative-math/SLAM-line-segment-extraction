@@ -34,5 +34,5 @@ class buildEnvironment:
         return points
 
     def show_sensorData(self, data):
-        for point in data:  # is it possible to input an array into set_at(...)?
+        for point in data:
             self.infomap.set_at(point, (255, 0, 0))

@@ -28,14 +28,15 @@ while running:
             sensorON = False
     if sensorON:
         start_time = time.time()
+
         position = pygame.mouse.get_pos()
-        # laser.position[0] = position[0]
-        # laser.position[1] = position[1]
         laser.position = np.array(position)
-        sensor_data = laser.sense_obstacles()  # 1D-array of max len 60, that contains for every angle the distance to the first black pixel and the original position
+        # create an array that contains for every angle the distance to the first black pixel and the robot position
+        sensor_data = laser.sense_obstacles()
         print("\rNumber of stored points: %s" % len(environment.pointCloud), end='')
         points = environment.dataStorage(sensor_data)
         environment.show_sensorData(points)
+
         sum_time += time.time() - start_time
         num_events += 1
     foreground = pygame.Surface((environment.mapw, environment.maph))
@@ -43,5 +44,3 @@ while running:
     environment.map.blit(environment.infomap, (0, 0))
     environment.map.blit(foreground, (0, 0), special_flags=pygame.BLEND_ADD)
     pygame.display.update()
-
-# pygame.quit()  # bug fix von Louis

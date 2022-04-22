@@ -7,7 +7,7 @@ import sensors
 import features
 
 detect_lines = True  # set False to show only the sensed laser points
-detect_landmarks = False  # set False to stop data association
+detect_landmarks = True  # set False to stop data association
 
 
 def random_color():
@@ -57,11 +57,11 @@ if __name__ == '__main__':
             # erase the last located features
             environment.infomap = originalMap.copy()
             # visualize the current scanning radius
-            pygame.draw.circle(environment.infomap, (255, 0, 0), laser.position, laser.Range, 2)  # draw the scan radius
+            pygame.draw.circle(environment.infomap, (255, 0, 0), laser.position, laser.Range, 2)
             pygame.draw.line(environment.infomap, (255, 0, 0), laser.position,
                              (laser.position[0] + laser.Range, laser.position[1]))
-
-            sensor_data = laser.sense_obstacles()  # 1D-array of max len 60, that contains for every angle the distance to the first black pixel and the original position
+            # create an array that contains for every angle the distance to the first black pixel and the robot position
+            sensor_data = laser.sense_obstacles()
             # convert the measured distances and angles to pixels, depending on the current robot position
             FeatureMAP.laser_points_set(sensor_data)
 
@@ -104,8 +104,6 @@ if __name__ == '__main__':
                         # calculate the start and end pixel of the scanned line, so it can be drawn on the infomap
                         ENDPOINTS[0] = FeatureMAP.projection_point2line(OUTERMOST[0], m, c)
                         ENDPOINTS[1] = FeatureMAP.projection_point2line(OUTERMOST[1], m, c)
-                        # print(OUTERMOST, m, c, sep=", ")  # TODO: m = 0 quite often, why are vertical walls shown?
-                        # print(ENDPOINTS)
 
                         if detect_landmarks:
                             FeatureMAP.FEATURES.append([[m, c], ENDPOINTS])
