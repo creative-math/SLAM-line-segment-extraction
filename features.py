@@ -1,5 +1,4 @@
 import numpy as np
-from fractions import Fraction
 from scipy.odr import *
 
 # landmarks
@@ -52,42 +51,6 @@ class featuresDetection:
         B = -C / B
         return m, B
 
-    # slope-intercept to general form
-    @staticmethod
-    def lineForm_Si2G(m, B):
-        A, B, C = -m, 1, -B
-        if A < 0:
-            A, B, C = -A, -B, -C
-        den_a = Fraction(A).limit_denominator(1000).denominator  # bug fix instead of installing Python >= 3.8
-        den_c = Fraction(C).limit_denominator(1000).denominator
-
-        gcd = np.gcd(den_a, den_c)
-        lcm = den_a * den_c / gcd
-
-        A = A * lcm
-        B = B * lcm
-        C = C * lcm
-        return A, B, C
-
-    @staticmethod
-    def line_intersect_general(params1, params2):
-        a1, b1, c1 = params1
-        a2, b2, c2 = params2
-        # TODO: prevent division by zero
-        x = (c1 * b2 - b1 * c2) / (b1 * a2 - a1 * b2)
-        y = (a1 * c2 - a2 * c1) / (b1 * a2 - a1 * b2)
-        return x, y
-
-    @staticmethod
-    def points_2line(point1, point2):
-        m, b = 0, 0
-        if point2[0] == point1[0]:
-            pass
-        else:
-            m = (point2[1] - point1[1]) / (point2[0] - point1[0])
-            b = point2[1] - m * point2[0]
-        return m, b
-
     @staticmethod
     def projection_point2line(point, m, b):
         x, y = point
@@ -115,6 +78,15 @@ class featuresDetection:
                 self.LASERPOINTS.append([tuple(points[i]), data[1][i]])
         self.NP = len(self.LASERPOINTS) - 1
 
+    @staticmethod
+    def intersect2lines(line_params, sensed_point, robotpos):
+        a, b, c = line_params
+        v_rot = np.array([a, b])  # 90° rotated directional vector of the line
+        ba = np.array(sensed_point) - robotpos  # directional vector of the laser scan
+
+        return tuple(robotpos + ba * (-c - np.dot(robotpos, v_rot)) / np.dot(ba, v_rot)) \
+            if np.dot(ba, v_rot) != 0 else tuple(np.ones(2) * np.inf)  # two parallel lines intersect in infinity
+
     # Define a function (quadratic in our case) to fit the data with.
     @staticmethod
     def linear_func(p, x):
@@ -123,41 +95,31 @@ class featuresDetection:
 
     @staticmethod
     def linear_func2(p, x):
-        a, b, c = p
-        return (-a / b) * x - (c / b)
+        return (-p[0] / p[1]) * x - (p[2] / p[1])  # (-a / b) * x - (c / b)
 
     def odr_fit(self, laser_points):
         x = np.array([i[0][0] for i in laser_points])
-        y = np.array([i[0][1] for i in laser_points])  # bug fix i[0][1] instead of i[0][0]
+        y = np.array([i[0][1] for i in laser_points])
 
-        # return 0, x[0]
+        # return 0, 1, x[0]
 
         # Create a model for fitting
-        linear_model = Model(self.linear_func)
+        linear_model = Model(self.linear_func2)
 
         # Create a RealData object using our initiated data from above
         data = RealData(x, y)
 
         # Set up ODR with the model and data.
-        odr_model = ODR(data, linear_model, beta0=[0., 0.])
-        # odr_model = ODR(data, linear_model, beta0=[0., 1., 0.])
+        a, b = y[0] - y[-1], x[-1] - x[0] if x[-1] - x[0] != 0 else 1e-10
+        c = -y[0] * b
+        odr_model = ODR(data, linear_model, beta0=[a, b, c])
 
         # Run the regression.
         out = odr_model.run()
 
-        m, b = out.beta
-        return m, b
-        #
-        # a, b, c = out.beta
-        # if b == 0:
-        #     b = 1
-        # return (-a / b), -(c / b)
-
-    def predictPoint(self, line_params, sensed_point, robotpos):
-        m, b = self.points_2line(robotpos, sensed_point)
-        params1 = self.lineForm_Si2G(m, b)
-        predx, predy = self.line_intersect_general(params1, line_params)
-        return predx, predy
+        a, b, c = out.beta
+        b = 1e-10 if b == 0 else b
+        return a, b, c
 
     def seed_segment_detection(self, robot_position, break_point_ind):
         flag = True
@@ -167,12 +129,10 @@ class featuresDetection:
         for i in range(break_point_ind, (self.NP - self.PMIN)):
             predicted_points_to_draw = []
             j = i + self.SNUM  # SNUM = Number of points in our seed segment
-            m, c = self.odr_fit(self.LASERPOINTS[i:j])
-
-            params = self.lineForm_Si2G(m, c)
+            params = self.odr_fit(self.LASERPOINTS[i:j])
 
             for k in range(i, j):
-                predicted_point = self.predictPoint(params, self.LASERPOINTS[k][0], robot_position)
+                predicted_point = self.intersect2lines(params, self.LASERPOINTS[k][0], robot_position)
                 predicted_points_to_draw.append(predicted_point)
                 d1 = self.dist_point2point(predicted_point, self.LASERPOINTS[k][0])
 
@@ -200,8 +160,7 @@ class featuresDetection:
             if PF > self.NP - 1:
                 break
             elif PB <= PF:
-                m, b = self.odr_fit(self.LASERPOINTS[PB:PF])
-                line_eq = self.lineForm_Si2G(m, b)
+                line_eq = self.odr_fit(self.LASERPOINTS[PB:PF])
 
                 POINT = self.LASERPOINTS[PF][0]
             else:
@@ -214,12 +173,11 @@ class featuresDetection:
 
         PF = PF - 1
 
-        while self.dist_point2line(line_eq, self.LASERPOINTS[PB][0]) < self.EPSILON:  # bug fix von Adi Mmx aus YTB
+        while self.dist_point2line(line_eq, self.LASERPOINTS[PB][0]) < self.EPSILON:
             if PB < break_point:
                 break
             elif PF <= PB:
-                m, b = self.odr_fit(self.LASERPOINTS[PF:PB])
-                line_eq = self.lineForm_Si2G(m, b)
+                line_eq = self.odr_fit(self.LASERPOINTS[PF:PB])
                 POINT = self.LASERPOINTS[PB][0]
             else:
                 break
