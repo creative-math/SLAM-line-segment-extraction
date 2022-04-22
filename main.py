@@ -5,7 +5,7 @@ import time
 import env
 import sensors
 
-environment = env.buildEnvironment((600, 1200), 'map2.png')
+environment = env.buildEnvironment((600, 1200), 'src/map2.png')
 environment.originalMap = environment.map.copy()
 laser = sensors.LaserSensor(200, 200, environment.originalMap, uncertanty=(0.5, 0.01))
 environment.map.fill((0, 0, 0))

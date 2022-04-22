@@ -18,7 +18,7 @@ def random_color():
 if __name__ == '__main__':
     # initiate the internal Map, the lidar some other relevant variables
     FeatureMAP = features.featuresDetection()
-    environment = env.buildEnvironment((600, 1200), 'map1.png')
+    environment = env.buildEnvironment((600, 1200), 'src/map1.png')
     originalMap = environment.map.copy()
     laser = sensors.LaserSensor(200, 200, originalMap, uncertanty=(0.5, 0.01))
     environment.map.fill((0, 0, 0))
