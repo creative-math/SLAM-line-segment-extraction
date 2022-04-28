@@ -36,7 +36,6 @@ if __name__ == '__main__':
         BREAK_POINT_IND = 0
         ENDPOINTS = [0, 0]
         sensorON = False
-        PREDICTED_POINTS_TODRAW = []
         # check that the game is still running with the mouse on the environment
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -85,8 +84,7 @@ if __name__ == '__main__':
                 else:
                     # assign a separate variable to each output of the segment detection
                     seedSegment = seedSeg[0]
-                    PREDICTED_POINTS_TODRAW = seedSeg[1]
-                    INDICES = seedSeg[2]
+                    INDICES = seedSeg[1]
                     # TODO: clip the index to allow segment growing between array start and end
                     results = FeatureMAP.seed_segment_growing(INDICES, BREAK_POINT_IND)
                     # if the region growing created a line segment, that is long enough and contains enough points

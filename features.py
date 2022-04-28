@@ -30,11 +30,11 @@ class featuresDetection:
     # distance point to line written in the general form
     @staticmethod
     def dist_point2line(params, point):
-        A, B, C = params
-        distance = abs(A * point[0] + B * point[1] + C) / np.sqrt(A ** 2 + B ** 2)
-        return distance
+        a, b, c = params
+        vector = np.array([a, b])
+        return np.abs(np.dot(point, vector) + c) / np.linalg.norm(vector)
 
-    # ectract two points from a line equation under the slope intercepts from
+    # extract two points from a line equation under the slope intercepts from
     @staticmethod
     def line_2points(m, b):
         x = 5
@@ -68,24 +68,21 @@ class featuresDetection:
                                                                         np.expand_dims(np.sin(angles), 1), axis=1)
 
     @staticmethod
-    def intersect2lines(line_params, sensed_point, robotpos):
+    def intersect2lines(line_params, laserpoint, robotpos):
         a, b, c = line_params
         v_rot = np.array([a, b])  # 90° rotated directional vector of the line
-        ba = sensed_point - robotpos  # directional vector of the laser scan
-
-        return robotpos + ba * (-c - np.dot(robotpos, v_rot)) / np.dot(ba, v_rot) \
-            if np.dot(ba, v_rot) != 0 else np.full(2, np.inf)  # two parallel lines intersect in infinity
+        ba = laserpoint - robotpos  # directional vector of the laser scan
+        # two parallel lines intersect in infinity
+        return robotpos + ba * (-c - np.dot(robotpos, v_rot)) / \
+            np.expand_dims(np.dot(ba, v_rot), len(laserpoint.shape) - 1) \
+            if np.all(np.dot(ba, v_rot) != 0) else np.full(laserpoint.shape, np.inf)
 
     @staticmethod
     def odr_fit(data):  # orthogonal distance regression
         data_mean = np.mean(data, axis=0)
-        _, _, V = np.linalg.svd(data - data_mean)
-        a = -V[1, 0]
-        b = V[1, 1]
-        c = np.dot(data_mean, V[1])
-
-        b = 1e-10 if b == 0 else b * 1e4  # b should not equal zero to prevent division by zero errors
-        return a * -1e4, b, c * -1e4  # numbers mustn't get too small
+        _, _, V = np.linalg.svd(data - data_mean)  # singular value decomposition
+        b = 1e-10 if V[1, 1] == 0 else V[1, 1] * 1e4  # b should not equal zero to prevent division by zero errors
+        return -V[1, 0] * -1e4, b, np.dot(data_mean, V[1]) * -1e4  # numbers a, b, c mustn't get too small
 
     def laser_points_set(self, data):
         self.LASERPOINTS = []
@@ -96,32 +93,19 @@ class featuresDetection:
         self.NP = len(self.LASERPOINTS) - 1
 
     def seed_segment_detection(self, robot_position, break_point_ind):
-        flag = True
         self.NP = max(0, self.NP)
         self.SEED_SEGMENTS = []
         # NP = Number (laser-) Points, PMIN = Min Number of Points a seed segment should have
         for i in range(break_point_ind, (self.NP - self.PMIN)):
-            predicted_points_to_draw = []
             j = i + self.SNUM  # SNUM = Number of points in our seed segment
             params = self.odr_fit(self.LASERPOINTS[i:j])
+            predicted_points = self.intersect2lines(params, self.LASERPOINTS[i:j], robot_position)
 
-            for k in range(i, j):
-                predicted_point = self.intersect2lines(params, self.LASERPOINTS[k], robot_position)
-                predicted_points_to_draw.append(predicted_point)
-                d1 = self.dist_point2point(predicted_point, self.LASERPOINTS[k])
-
-                if d1 > self.DELTA:
-                    flag = False
-                    break
-                d2 = self.dist_point2line(params, predicted_point)
-
-                if d2 > self.EPSILON:
-
-                    flag = False
-                    break
-            if flag:
+            # if the fitted line fulfills the epsilon and delta condition
+            if np.all(np.linalg.norm(predicted_points - self.LASERPOINTS[i:j], axis=1) <= self.DELTA) \
+                    and np.all(self.dist_point2line(params, predicted_points) <= self.EPSILON):
                 self.LINE_PARAMS = params
-                return [self.LASERPOINTS[i:j], predicted_points_to_draw, (i, j)]
+                return [self.LASERPOINTS[i:j], (i, j)]
         return False
 
     def seed_segment_growing(self, indices, break_point):
