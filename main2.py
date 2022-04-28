@@ -59,7 +59,8 @@ if __name__ == '__main__':
             pygame.draw.circle(environment.infomap, (255, 0, 0), laser.position, laser.Range, 2)
             pygame.draw.line(environment.infomap, (255, 0, 0), laser.position,
                              (laser.position[0] + laser.Range, laser.position[1]))
-            # create an array that contains for every angle the distance to the first black pixel and the robot position
+
+            # collect Lidar data
             sensor_data = laser.sense_obstacles()
             # convert the measured distances and angles to pixels, depending on the current robot position
             FeatureMAP.laser_points_set(sensor_data)
@@ -74,55 +75,50 @@ if __name__ == '__main__':
 
             start_time = time.time()
 
-            # while there are more unworked points left than a segment needs to have at least
+            # start detecting seed segments and grow their region
+            # ---------------------------------------------------------------------------------------------
             while BREAK_POINT_IND < (FeatureMAP.NP - FeatureMAP.PMIN) and detect_lines:
-
-                # try to detect a seed segment, if this fails, no further seed segments can be found
+                # detect the next segment
                 seedSeg = FeatureMAP.seed_segment_detection(laser.position, BREAK_POINT_IND)
-                if seedSeg == False:
+                if not seedSeg:
                     break
                 else:
-                    # assign a separate variable to each output of the segment detection
                     seedSegment = seedSeg[0]
                     INDICES = seedSeg[1]
-                    # TODO: clip the index to allow segment growing between array start and end
+
+                    # grow the region of the segment, it has to contain enough points and has to be long enough
                     results = FeatureMAP.seed_segment_growing(INDICES, BREAK_POINT_IND)
-                    # if the region growing created a line segment, that is long enough and contains enough points
-                    if results == False:
+                    if not results:
                         BREAK_POINT_IND = INDICES[1]
                         continue
                     else:
-                        # assign a separate variable to each output of the region growing
-                        line_eq = results[1]
-                        m, c = results[5]
-                        line_seg = results[0]
-                        OUTERMOST = results[2]
-                        BREAK_POINT_IND = results[3]
+                        line_eq = results[0]
+                        PB = results[1]
+                        PF = results[2]
+                        BREAK_POINT_IND = PF
 
                         # calculate the start and end pixel of the scanned line, so it can be drawn on the infomap
-                        ENDPOINTS[0] = FeatureMAP.projection_point2line(OUTERMOST[0], m, c)
-                        ENDPOINTS[1] = FeatureMAP.projection_point2line(OUTERMOST[1], m, c)
+                        ENDPOINTS = FeatureMAP.projection_point2line(
+                            line_eq, FeatureMAP.LASERPOINTS[[PB, PF - 1]])
 
-                        if detect_landmarks:
-                            FeatureMAP.FEATURES.append([[m, c], ENDPOINTS])
-                            pygame.draw.line(environment.infomap, (0, 255, 0), ENDPOINTS[0], ENDPOINTS[1], 1)
-                            environment.dataStorage(sensor_data)
-
+                        if detect_landmarks:  # start data association for the current line segment
+                            FeatureMAP.FEATURES.append([line_eq, ENDPOINTS])
                             FeatureMAP.FEATURES = FeatureMAP.lineFeats2point()
                             features.landmark_association(FeatureMAP.FEATURES)
+                            # draw the detected line green
+                            pygame.draw.line(environment.infomap, (0, 255, 0), ENDPOINTS[0], ENDPOINTS[1], 1)
 
-                        else:
+                        else:  # draw the current line segment
                             COLOR = random_color()
-                            for point in line_seg:
-                                environment.infomap.set_at((int(point[0]), int(point[1])), (0, 255, 0))
+                            for point in FeatureMAP.LASERPOINTS[PB:PF]:
                                 pygame.draw.circle(environment.infomap, COLOR, (int(point[0]), int(point[1])), 2, 0)
                             pygame.draw.line(environment.infomap, (255, 0, 0), ENDPOINTS[0], ENDPOINTS[1], 2)
 
-                            environment.dataStorage(sensor_data)
             if detect_lines:
                 sum_time += time.time() - start_time
             num_events += 1
-        if detect_landmarks:
+
+        if detect_landmarks:  # draw all stored landmarks
             for landmark in features.Landmarks:
                 pygame.draw.line(environment.infomap, (0, 0, 255), landmark[1][0], landmark[1][1], 2)
 
