@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.odr import *
 
 # landmarks
 Landmarks = []
@@ -7,7 +6,7 @@ Landmarks = []
 
 class featuresDetection:
     def __init__(self):
-        self.LASERPOINTS = []
+        self.LASERPOINTS = np.zeros(0)
         # variables
         self.EPSILON = 10
         self.DELTA = 501
@@ -68,35 +67,17 @@ class featuresDetection:
         return robotPosition + np.expand_dims(distances, 1) * np.append(np.expand_dims(np.cos(angles), 1),
                                                                         np.expand_dims(np.sin(angles), 1), axis=1)
 
-    def laser_points_set(self, data):
-        self.LASERPOINTS = []
-        if not data:
-            pass
-        else:  # convert distance, angle and position to pixel
-            points = np.array(self.AD2pos(data[0], data[1], data[2]), dtype=int)
-            for i in range(0, data[1].size):
-                self.LASERPOINTS.append([points[i], data[1][i]])
-        self.NP = len(self.LASERPOINTS) - 1
-
     @staticmethod
     def intersect2lines(line_params, sensed_point, robotpos):
         a, b, c = line_params
         v_rot = np.array([a, b])  # 90° rotated directional vector of the line
-        ba = np.array(sensed_point) - robotpos  # directional vector of the laser scan
+        ba = sensed_point - robotpos  # directional vector of the laser scan
 
         return robotpos + ba * (-c - np.dot(robotpos, v_rot)) / np.dot(ba, v_rot) \
             if np.dot(ba, v_rot) != 0 else np.full(2, np.inf)  # two parallel lines intersect in infinity
 
     @staticmethod
-    def linear_func2(p, x):
-        return (-p[0] / p[1]) * x - (p[2] / p[1])  # (-a / b) * x - (c / b)
-
-    @staticmethod
-    def odr_fit(laser_points):  # orthogonal distance regression
-        x = np.array([i[0][0] for i in laser_points])
-        y = np.array([i[0][1] for i in laser_points])
-        data = np.append(np.expand_dims(x, 0), np.expand_dims(y, 0), axis=0).T  # (n x 2) Matrix
-
+    def odr_fit(data):  # orthogonal distance regression
         data_mean = np.mean(data, axis=0)
         _, _, V = np.linalg.svd(data - data_mean)
         a = -V[1, 0]
@@ -105,6 +86,14 @@ class featuresDetection:
 
         b = 1e-10 if b == 0 else b * 1e4  # b should not equal zero to prevent division by zero errors
         return a * -1e4, b, c * -1e4  # numbers mustn't get too small
+
+    def laser_points_set(self, data):
+        self.LASERPOINTS = []
+        if not data:
+            pass
+        else:  # convert distance, angle and position to pixel
+            self.LASERPOINTS = np.array(self.AD2pos(data[0], data[1], data[2]), dtype=int)
+        self.NP = len(self.LASERPOINTS) - 1
 
     def seed_segment_detection(self, robot_position, break_point_ind):
         flag = True
@@ -117,9 +106,9 @@ class featuresDetection:
             params = self.odr_fit(self.LASERPOINTS[i:j])
 
             for k in range(i, j):
-                predicted_point = self.intersect2lines(params, self.LASERPOINTS[k][0], robot_position)
+                predicted_point = self.intersect2lines(params, self.LASERPOINTS[k], robot_position)
                 predicted_points_to_draw.append(predicted_point)
-                d1 = self.dist_point2point(predicted_point, self.LASERPOINTS[k][0])
+                d1 = self.dist_point2point(predicted_point, self.LASERPOINTS[k])
 
                 if d1 > self.DELTA:
                     flag = False
@@ -141,48 +130,48 @@ class featuresDetection:
         # Beginning and Final points in the line segment
         PB, PF = max(break_point, i - 1), min(j + 1, len(self.LASERPOINTS) - 1)
 
-        while self.dist_point2line(line_eq, self.LASERPOINTS[PF][0]) < self.EPSILON:
+        while self.dist_point2line(line_eq, self.LASERPOINTS[PF]) < self.EPSILON:
             if PF > self.NP - 1:
                 break
             elif PB <= PF:
                 line_eq = self.odr_fit(self.LASERPOINTS[PB:PF])
 
-                POINT = self.LASERPOINTS[PF][0]
+                POINT = self.LASERPOINTS[PF]
             else:
                 break
 
             PF = PF + 1
-            NEXTPOINT = self.LASERPOINTS[PF][0]
+            NEXTPOINT = self.LASERPOINTS[PF]
             if self.dist_point2point(POINT, NEXTPOINT) > self.GMAX:
                 break
 
         PF = PF - 1
 
-        while self.dist_point2line(line_eq, self.LASERPOINTS[PB][0]) < self.EPSILON:
+        while self.dist_point2line(line_eq, self.LASERPOINTS[PB]) < self.EPSILON:
             if PB < break_point:
                 break
             elif PF <= PB:
                 line_eq = self.odr_fit(self.LASERPOINTS[PF:PB])
-                POINT = self.LASERPOINTS[PB][0]
+                POINT = self.LASERPOINTS[PB]
             else:
                 break
 
             PB = PB - 1
-            NEXTPOINT = self.LASERPOINTS[PB][0]
+            NEXTPOINT = self.LASERPOINTS[PB]
             if self.dist_point2point(POINT, NEXTPOINT) > self.GMAX:
                 break
         PB = PB + 1
 
-        LR = self.dist_point2point(self.LASERPOINTS[PB][0], self.LASERPOINTS[PF][0])
+        LR = self.dist_point2point(self.LASERPOINTS[PB], self.LASERPOINTS[PF])
         PR = len(self.LASERPOINTS[PB:PF])
 
         if (LR >= self.LMIN) and (PR >= self.PMIN):
             self.LINE_PARAMS = line_eq
             m, b = self.lineForm_G2SI(line_eq[0], line_eq[1], line_eq[2])
             self.two_points = self.line_2points(m, b)
-            self.LINE_SEGMENTS.append((self.LASERPOINTS[PB + 1][0], self.LASERPOINTS[PF - 1][0]))
+            self.LINE_SEGMENTS.append((self.LASERPOINTS[PB + 1], self.LASERPOINTS[PF - 1]))
             return [self.LASERPOINTS[PB:PF], self.two_points,
-                    (self.LASERPOINTS[PB + 1][0], self.LASERPOINTS[PF - 1][0]), PF, line_eq, (m, b)]
+                    (self.LASERPOINTS[PB + 1], self.LASERPOINTS[PF - 1]), PF, line_eq, (m, b)]
         else:
             return False
 

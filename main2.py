@@ -66,7 +66,7 @@ if __name__ == '__main__':
             FeatureMAP.laser_points_set(sensor_data)
 
             for point in FeatureMAP.LASERPOINTS:
-                environment.infomap.set_at((int(point[0][0]), int(point[0][1])), (255, 0, 0))
+                environment.infomap.set_at((int(point[0]), int(point[1])), (255, 0, 0))
 
             if not sensor_data:
                 environment.map.blit(environment.infomap, (0, 0))
@@ -116,9 +116,8 @@ if __name__ == '__main__':
                         else:
                             COLOR = random_color()
                             for point in line_seg:
-                                environment.infomap.set_at((int(point[0][0]), int(point[0][1])), (0, 255, 0))
-                                pygame.draw.circle(environment.infomap, COLOR, (int(point[0][0]), int(point[0][1])), 2,
-                                                   0)
+                                environment.infomap.set_at((int(point[0]), int(point[1])), (0, 255, 0))
+                                pygame.draw.circle(environment.infomap, COLOR, (int(point[0]), int(point[1])), 2, 0)
                             pygame.draw.line(environment.infomap, (255, 0, 0), ENDPOINTS[0], ENDPOINTS[1], 2)
 
                             environment.dataStorage(sensor_data)
