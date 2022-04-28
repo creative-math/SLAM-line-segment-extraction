@@ -91,29 +91,20 @@ class featuresDetection:
     def linear_func2(p, x):
         return (-p[0] / p[1]) * x - (p[2] / p[1])  # (-a / b) * x - (c / b)
 
-    def odr_fit(self, laser_points):
+    @staticmethod
+    def odr_fit(laser_points):  # orthogonal distance regression
         x = np.array([i[0][0] for i in laser_points])
         y = np.array([i[0][1] for i in laser_points])
+        data = np.append(np.expand_dims(x, 0), np.expand_dims(y, 0), axis=0).T  # (n x 2) Matrix
 
-        # return 0, 1, x[0]
+        data_mean = np.mean(data, axis=0)
+        _, _, V = np.linalg.svd(data - data_mean)
+        a = -V[1, 0]
+        b = V[1, 1]
+        c = np.dot(data_mean, V[1])
 
-        # Create a model for fitting
-        linear_model = Model(self.linear_func2)
-
-        # Create a RealData object using our initiated data from above
-        data = RealData(x, y)
-
-        # Set up ODR with the model and data.
-        a, b = y[0] - y[-1], x[-1] - x[0] if x[-1] - x[0] != 0 else 1e-10
-        c = -y[0] * b
-        odr_model = ODR(data, linear_model, beta0=[a, b, c])
-
-        # Run the regression.
-        out = odr_model.run()
-
-        a, b, c = out.beta
-        b = 1e-10 if b == 0 else b
-        return a, b, c
+        b = 1e-10 if b == 0 else b * 1e4  # b should not equal zero to prevent division by zero errors
+        return a * -1e4, b, c * -1e4  # numbers mustn't get too small
 
     def seed_segment_detection(self, robot_position, break_point_ind):
         flag = True
