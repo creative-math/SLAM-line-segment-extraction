@@ -1,10 +1,7 @@
 import numpy as np
 
-# landmarks
-Landmarks = []
 
-
-class featuresDetection:
+class FeaturesDetection:
     def __init__(self):
         # variables for storing things
         self.LASERPOINTS = np.zeros(0)
@@ -12,6 +9,7 @@ class featuresDetection:
         self.LINE_SEGMENTS = []
         self.LINE_PARAMS = None
         self.FEATURES = []
+        self.LANDMARKS = []
 
         # variables in Pixel units
         self.EPSILON = 10  # maximum orthogonal distance of a point to its line
@@ -117,40 +115,27 @@ class featuresDetection:
         else:
             return False
 
-    def lineFeats2point(self):
-        new_rep = []  # the new representation of tne features
-        for feature in self.FEATURES:
-            new_rep.append([feature[0], feature[1], self.projection_point2line(feature[0], np.zeros(2))])
-        return new_rep
+    def landmark_association(self, landmarks):
+        thresh = 10
+        for _landmark in landmarks:
 
+            flag = False
+            for i, Landmark in enumerate(self.LANDMARKS):
+                dist = np.linalg.norm(_landmark[2] - np.array(Landmark[2]))
+                if dist < thresh:
+                    if not is_overlap(_landmark[1], Landmark[1]):
+                        continue
+                    else:
+                        self.LANDMARKS.pop(i)
+                        self.LANDMARKS.insert(i, _landmark)
+                        flag = True
 
-def landmark_association(landmarks):
-    thresh = 10
-    for l in landmarks:
-
-        flag = False
-        for i, Landmark in enumerate(Landmarks):
-            dist = np.linalg.norm(l[2] - np.array(Landmark[2]))
-            if dist < thresh:
-                if not is_overlap(l[1], Landmark[1]):
-                    continue
-                else:
-                    Landmarks.pop(i)
-                    Landmarks.insert(i, l)
-                    flag = True
-
-                    break
-        if not flag:
-            Landmarks.append(l)
+                        break
+            if not flag:
+                self.LANDMARKS.append(_landmark)
 
 
 def is_overlap(seg1, seg2):
-    length1 = np.linalg.norm(seg1[0] - np.array(seg1[1]))
-    length2 = np.linalg.norm(seg2[0] - np.array(seg2[1]))
-    center1 = np.array((seg1[0][0] + seg1[1][0]) / 2, (seg1[0][1] + seg1[1][1]) / 2)
-    center2 = np.array((seg2[0][0] + seg2[1][0]) / 2, (seg2[0][1] + seg2[1][1]) / 2)
-    dist = np.linalg.norm(center1 - center2)
-    if dist > (length1 + length2) / 2:
-        return False
-    else:
-        return True
+    length1 = np.linalg.norm(seg1[0] - seg1[1])
+    length2 = np.linalg.norm(seg2[0] - seg2[1])
+    return np.linalg.norm(np.sum(seg1 - seg2, axis=0) / 2) <= (length1 + length2) / 2
